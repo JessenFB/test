@@ -1,10 +1,34 @@
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'dart:convert';
-import 'package:timeago/timeago.dart' as timeago;
 import 'package:go_to_gym/models/post.dart';
 import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
+
+Future<void> sendNotificationToUser(String token, String title, String body) async {
+  const String backendUrl = 'https://uas-cloud-six.vercel.app/send-to-device';
+
+  try {
+    final response = await http.post(
+      Uri.parse(backendUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'token': token,
+        'title': title,
+        'body': body,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      print("Failed to send notification: \${response.body}");
+    }
+  } catch (e) {
+    print("Error sending notification: \$e");
+  }
+}
+
 
 class PostDetailScreen extends StatefulWidget {
   final Post post;
@@ -54,7 +78,16 @@ class _PostDetailScreenState extends State<PostDetailScreen> {
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-    _commentController.clear();
+     _commentController.clear();
+      final postOwner = widget.post.userId;
+      if (postOwner != FirebaseAuth.instance.currentUser?.uid) {
+        final doc = await FirebaseFirestore.instance.collection('users').doc(postOwner).get();
+        final token = doc.data()?['fcmToken'];
+        if (token != null) {
+          await sendNotificationToUser(token, "Komentar Baru!", "Seseorang mengomentari postinganmu.");
+        }
+      }
+
   }
 
   Future<void> _deleteCommentAndReplies(String commentId) async {

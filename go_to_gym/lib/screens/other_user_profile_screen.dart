@@ -5,8 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_to_gym/screens/user_post_list_screen.dart';
 
-
-
 Future<void> sendNotificationToUser(String token, String title, String body) async {
   const String backendUrl = 'https://uas-cloud-six.vercel.app/send-to-device';
 

@@ -10,6 +10,29 @@ import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:go_to_gym/services/follow_service.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:http/http.dart' as http;
+
+Future<void> sendNotificationToUser(String token, String title, String body) async {
+  const String backendUrl = 'https://uas-cloud-six.vercel.app/send-to-device';
+
+  try {
+    final response = await http.post(
+      Uri.parse(backendUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'token': token,
+        'title': title,
+        'body': body,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      print("Failed to send notification: ${response.body}");
+    }
+  } catch (e) {
+    print("Error sending notification: $e");
+  }
+}
 
 class PostSnapshotData {
   final bool isLiked;
@@ -61,6 +84,22 @@ class _PostCardState extends State<PostCard> {
     } else {
       await likeRef.set({'likedAt': FieldValue.serverTimestamp()});
       await postRef.update({'likes': FieldValue.increment(1)});
+    }
+  }
+
+  Future<void> _notifyPostOwner(String postOwnerId) async {
+    final userDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(postOwnerId)
+        .get();
+
+    final token = userDoc.data()?['fcmToken'];
+    if (token != null && token.isNotEmpty) {
+      await sendNotificationToUser(
+        token,
+        "Seseorang menyukai postinganmu!",
+        "Postinganmu mendapatkan like baru.",
+      );
     }
   }
 
